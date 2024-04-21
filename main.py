@@ -367,7 +367,12 @@ print('Model compiled!')
 def main():
 
     # Prompt the user to select a file
-    file_paths = filedialog.askopenfilenames()
+    file_paths = filedialog.askopenfilenames(title="Select Image Files", filetypes=[("Image Files", "*.jpg *.jpeg *.png")])
+
+    if len(file_paths) == 0:
+        print("No files were selected!")
+        return
+
     print(type(file_paths))
 
     # Now you have the file paths selected by the user, and you can proceed with further processing
