@@ -1,22 +1,18 @@
+import sys
 import time
-
 import customtkinter
 import tkinter as Tk
 from tkinter import filedialog
 from PIL import Image, ImageTk
-
 import os
 import random
 import shutil
 import zipfile
 from shutil import copyfile
-
-# %matplotlib inline
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 from kaggle.api.kaggle_api_extended import KaggleApi
-# from google.colab import files
 from keras.preprocessing import image
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import load_model
@@ -25,14 +21,37 @@ from tensorflow.keras import layers
 from tensorflow.keras import Model
 import pandas as pd
 
+
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS2
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+
 local_zip = "./fruits-fresh-and-rotten-for-classification.zip"
 if not os.path.exists(local_zip):
     print("Downloading Dataset from Kaggle...")
-    print('Zip File Size: 3.58 GB')
-    print("Wish to continue?")
-    choice = input("Enter 'n' to terminate: ")
-    if choice == 'n' or choice == 'no' or choice == 'No' or choice == 'NO' or choice == 'N' or choice == 'nO':
+    print('Download Size: 3.58 GB')
+    print("This process might take 10-15 mins.")
+    print("Answer the dialog box to continue...")
+
+    # Display a dialog box with a message and yes/no buttons
+    result = Tk.messagebox.askyesno("Downloading Dataset from Kaggle", "Download Size: 3.58 GB. This process might "
+                                                                       "take 10-15 mins. Wish to continue?")
+
+    if result:
+        # User selected 'Yes', proceed with the download
+        print("User chose to continue.")
+        # Add your download code here
+    else:
+        # User selected 'No', do not proceed with the download
+        Tk.messagebox.showinfo("Download Cancelled", "Exiting the program!")
+        print("User chose not to continue.")
         exit()
+
     api = KaggleApi()
     api.dataset_download_files(dataset="sriramr/fruits-fresh-and-rotten-for-classification", path="./")
     print("Dataset download complete!")
@@ -138,6 +157,8 @@ if not os.path.exists(local_zip):
     print('rbananas_test images = ', len(os.listdir(rbananas_test_dir)))
     print('roranges_test images = ', len(os.listdir(roranges_test_dir)))
 
+    print("Splitting DATA into Train and Validation...")
+
     SPLIT_SIZE = 0.67
     split_data(fapples_train_dir, train_fresh_apples_dir, validation_fresh_apples_dir, SPLIT_SIZE)
     split_data(fbananas_train_dir, train_fresh_bananas_dir, validation_fresh_bananas_dir, SPLIT_SIZE)
@@ -153,6 +174,8 @@ if not os.path.exists(local_zip):
     split_data(rapples_test_dir, test_rotten_apples_dir, validation_rotten_apples_dir, SPLIT_SIZE)
     split_data(rbananas_test_dir, test_rotten_bananas_dir, validation_rotten_bananas_dir, SPLIT_SIZE)
     split_data(roranges_test_dir, test_rotten_oranges_dir, validation_rotten_oranges_dir, SPLIT_SIZE)
+
+    print("Splitting DATA into Train and Validation completed!")
 
     print(len(os.listdir('./tmp/fruit-dataset/train/Fresh Apples/')))
     print(len(os.listdir('./tmp/fruit-dataset/train/Fresh Bananas/')))
@@ -221,20 +244,6 @@ if not os.path.exists(local_zip):
     for fn in preview_img:
         os.system(f'del {os.path.join(preview_dir, fn)}')
 
-    train_generator = train_datagen.flow_from_directory(train_dir,
-                                                        batch_size=32,
-                                                        color_mode="rgb",
-                                                        # shuffle = False,
-                                                        target_size=(150, 150),  # ?
-                                                        class_mode='categorical')
-
-    validation_generator = train_datagen.flow_from_directory(validation_dir,
-                                                             batch_size=32,
-                                                             color_mode="rgb",
-                                                             # shuffle = False,
-                                                             target_size=(150, 150),  # ?
-                                                             class_mode='categorical')
-
 
     class myCallback(tf.keras.callbacks.Callback):
         def on_epoch_end(self, epoch, logs={}):
@@ -278,11 +287,6 @@ if not os.path.exists(local_zip):
     x = layers.Dense(1024, activation='relu')(x)
     x = layers.Dropout(0.2)(x)
     x = layers.Dense(6, activation='softmax')(x)
-else:
-    print("Dataset found already downloaded!")
-
-
-if not os.path.exists('./model.h5'):
     model = Model(pre_trained_model.input, x)
     model.compile(optimizer='adam',  # RMSprop(lr=0.0001), adam
                   loss='categorical_crossentropy',
@@ -302,6 +306,20 @@ if not os.path.exists('./model.h5'):
 
     print(train_len)
     print(val_len)
+
+    train_generator = train_datagen.flow_from_directory(train_dir,
+                                                        batch_size=32,
+                                                        color_mode="rgb",
+                                                        # shuffle = False,
+                                                        target_size=(150, 150),  # ?
+                                                        class_mode='categorical')
+
+    validation_generator = train_datagen.flow_from_directory(validation_dir,
+                                                             batch_size=32,
+                                                             color_mode="rgb",
+                                                             # shuffle = False,
+                                                             target_size=(150, 150),  # ?
+                                                             class_mode='categorical')
 
     history = model.fit(
         train_generator,
@@ -354,15 +372,17 @@ if not os.path.exists('./model.h5'):
     print('accuracy test: ', acc)
 
     model.save('model.h5')
+else:
+    print("Dataset found already downloaded!")
 
 print('Model loaded!')
-model_predict = load_model('model.h5')
+model_predict = load_model(resource_path('./model.h5'))
 model_predict.compile(optimizer='adam',
                       loss='categorical_crossentropy',
                       metrics=['accuracy'])
 
 print('Model compiled!')
-# uploaded = files.upload()
+
 
 def main():
 
@@ -370,6 +390,7 @@ def main():
     file_paths = filedialog.askopenfilenames(title="Select Image Files", filetypes=[("Image Files", "*.jpg *.jpeg *.png")])
 
     if len(file_paths) == 0:
+        Tk.messagebox.showinfo("No files selected", "You didn't select any files!")
         print("No files were selected!")
         return
 
@@ -386,7 +407,6 @@ def main():
     for fn in file_paths:
         path = fn
         img = image.load_img(path, color_mode="rgb", target_size=(150, 150), interpolation="nearest")
-        # imgplot = plt.imshow(img)
         img = image.img_to_array(img)
         img = np.expand_dims(img, axis=0)
         img = img / 255
@@ -425,7 +445,7 @@ def main():
         plt.subplot((int)(len(image_name) / 4) + 1, 4, n + 1)
         plt.subplots_adjust(hspace=0)
         plt.imshow(image.load_img(image_name[n], color_mode="rgb", target_size=(150, 150), interpolation="nearest"))
-        title = f"predict: {predict_result[n]} ({round(float(image_conf[n]) * 100, 2)}%)"
+        title = f"Prediction: {predict_result[n]} ({round(float(image_conf[n]) * 100, 2)}%)"
         plt.title(title, color='black')
         plt.axis('off')
     plt.show()
@@ -445,8 +465,8 @@ customtkinter.set_default_color_theme("dark-blue")
 root = customtkinter.CTk()
 root.geometry("720x405")
 
-background_image_dark = Tk.PhotoImage(file="./abo bg dark.png", format="PNG")
-background_image_light = Tk.PhotoImage(file="./abo bg.png", format="PNG")
+background_image_dark = Tk.PhotoImage(file=resource_path("./abo bg dark.png"), format="PNG")
+background_image_light = Tk.PhotoImage(file=resource_path("./abo bg.png"), format="PNG")
 background_label = Tk.Label(master=root, image=background_image_dark)
 background_label.place(relwidth=1, relheight=1)
 
